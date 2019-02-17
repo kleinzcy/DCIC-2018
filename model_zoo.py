@@ -20,6 +20,7 @@ class my_lgb:
         self.feature_importance = []
         self.folds = folds
         self.seed = seed
+        self.oof = None
 
     def inference_folds(self, X_train, y_train, X_test, param):
         # 五折交叉验证
@@ -38,7 +39,7 @@ class my_lgb:
                             num_round,
                             valid_sets=[trn_data, val_data],
                             verbose_eval=200,
-                            early_stopping_rounds=100)
+                            early_stopping_rounds=200)
             oof[val_idx] = np.rint(clf.predict(X_train[val_idx], num_iteration=clf.best_iteration))
 
             predictions += clf.predict(X_test, num_iteration=clf.best_iteration) / folds.n_splits
@@ -46,6 +47,8 @@ class my_lgb:
             self.feature_importance.append(clf.feature_importance())
 
         self.results = np.rint(predictions).astype('int64')
+
+        self.oof = oof
 
 
         print("score: {:.8f}, MAE: {}".format(self.score(oof, y_train), self.MAE(oof, y_train)))
@@ -70,7 +73,6 @@ class my_xgb:
         self.results = None
         self.feature_importance = []
         self.folds = folds
-        pass
 
     def inference_folds(self, X_train, y_train, X_test, param):
         # 五折交叉验证

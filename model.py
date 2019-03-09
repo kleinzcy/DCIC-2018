@@ -6,12 +6,7 @@
 # @Software: PyCharm
 import warnings
 import time
-import sys
-import os
-import datetime
-from sklearn.metrics import mean_squared_error
-from sklearn.metrics import log_loss
-from model_zoo import my_lgb,my_xgb
+from model_zoo import my_lgb
 import pandas as pd
 import numpy as np
 
@@ -35,7 +30,6 @@ def percent(df, feature):
         df[f] = np.rint(df[f])
         new_feature = f + '_count'
         tmp = df.groupby(f).size().reset_index().rename(columns={0: new_feature})
-        #  tmp[new_feature] = tmp[new_feature].cumsum()*100/df.shape[0]
         df = df.merge(tmp, 'left', on=f)
     return df
 
@@ -165,7 +159,7 @@ def model_final():
         results.append(_results)
     valid = oof[0]*0.25 + oof[1]*0.25 + oof[2]*0.251 + oof[3]*0.25
     print("score :{}, spend:{}".format(score(valid, y_train), time.time() - start))
-    final_result = results[0]*0.25 + results[1]*0.25 + results[2]*0.251 + results[3]*0.25
+    final_result = results[0]*0.25 + results[1]*0.25 + results[2]*0.25 + results[3]*0.25
     submit(model_name='my_model', predictions=final_result)
 
 

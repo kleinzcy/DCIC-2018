@@ -41,6 +41,10 @@ def generate_feature(df):
     df['是否使用网购类应用'] = np.where(df['当月网购类应用使用次数'] > 0, 1, 0)
     df['当月网购类应用使用次数' + '百分比'] = (df['当月网购类应用使用次数']) / (df[app_col].sum(axis=1) + 1e-8)
     df.loc[df['用户年龄'] == 0, '用户年龄'] = df['用户年龄'].mode()
+    df['当月视频播放类应用使用次数'] = np.where(df['当月视频播放类应用使用次数'] > 30000, 30000, df['当月视频播放类应用使用次数'])
+    df['当月网购类应用使用次数'] = np.where(df['当月网购类应用使用次数'] > 10000, 10000, df['当月网购类应用使用次数'])
+    df['当月金融理财类应用使用总次数'] = np.where(df['当月金融理财类应用使用总次数'] > 10000, 10000, df['当月金融理财类应用使用总次数'])
+    df['用户当月账户余额（元）'] = np.where(df['用户当月账户余额（元）'] > 2000, 2000, df['用户当月账户余额（元）'])
 
     return df
 
@@ -101,6 +105,7 @@ def model_final():
         clf = my_lgb(folds=5, seed=seed)
         clf.inference_folds(X_train, y_train, X_test, param)
         return clf.oof, clf.results
+    """
     param1 = {'num_leaves': 40,
              'objective':'regression_l2',
              'max_depth': 6,
@@ -149,15 +154,67 @@ def model_final():
              "lambda_l1": 5,
              "lambda_l2": 0,
              "verbosity": -1}
+    """
+    param1 = {'num_leaves': 40,
+             'objective': 'regression_l2',
+             'max_depth': 6,
+             'learning_rate': 0.005,
+             "boosting": "gbdt",
+             "feature_fraction": 0.5,
+             "bagging_freq": 1,
+             "bagging_fraction": 0.5,
+             "metric": 'mae',
+             "lambda_l1": 5,
+             "lambda_l2": 0,
+             "verbosity": -1}
+    param2 = {'num_leaves': 40,
+             'objective': 'regression_l2',
+             'max_depth': 6,
+             'learning_rate': 0.005,
+             "boosting": "gbdt",
+             "feature_fraction": 0.5,
+             "bagging_freq": 1,
+             "bagging_fraction": 0.5,
+             "metric": 'mae',
+             "lambda_l1": 5,
+             "lambda_l2": 1,
+             "verbosity": -1}
+    param3 = {'num_leaves': 40,
+             'objective': 'regression_l1',
+             'max_depth': 6,
+             'learning_rate': 0.005,
+             "boosting": "gbdt",
+             "feature_fraction": 0.5,
+             "bagging_freq": 1,
+             "bagging_fraction": 0.5,
+             "metric": 'mae',
+             "lambda_l1": 5,
+             "lambda_l2": 1,
+             "verbosity": -1}
+    param4 = {'num_leaves': 40,
+             'objective': 'regression_l1',
+             'max_depth': 6,
+             'learning_rate': 0.005,
+             "boosting": "gbdt",
+             "feature_fraction": 0.5,
+             "bagging_freq": 1,
+             "bagging_fraction": 0.5,
+             "metric": 'mae',
+             "lambda_l1": 5,
+             "lambda_l2": 0,
+             "verbosity": -1}
+
     param = [param1, param2, param3, param4]
     seed = [2018, 2019, 2018, 2019]
     oof = []
     results = []
     for _param, _seed in zip(param, seed):
+        print('*'*50)
+        print("seed: {}, type: {}".format(_seed, _param['metric']))
         _oof, _results = _model_main(_param, seed=_seed)
         oof.append(_oof)
         results.append(_results)
-    valid = oof[0]*0.25 + oof[1]*0.25 + oof[2]*0.251 + oof[3]*0.25
+    valid = oof[0]*0.25 + oof[1]*0.25 + oof[2]*0.25 + oof[3]*0.25
     print("score :{}, spend:{}".format(score(valid, y_train), time.time() - start))
     final_result = results[0]*0.25 + results[1]*0.25 + results[2]*0.25 + results[3]*0.25
     submit(model_name='my_model', predictions=final_result)

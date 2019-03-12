@@ -42,7 +42,7 @@ class my_lgb:
                             num_round,
                             valid_sets=[trn_data, val_data],
                             verbose_eval=200,
-                            early_stopping_rounds=200)
+                            early_stopping_rounds=100)
             oof[val_idx] = np.rint(clf.predict(X_train[val_idx], num_iteration=clf.best_iteration))
 
             if not cv:
@@ -81,8 +81,8 @@ class my_lgb:
         #  'feature_fraction': (0.3, 1.0),
         params ={
             'num_leaves': (30, 40),
-            'lambda_l1': (1, 10),
-            'lambda_l2': (0, 5)
+            'lambda_l1': (5, 10),
+            'lambda_l2': (0, 3)
         }
 
         def lgb_cv(num_leaves, lambda_l1, lambda_l2):
@@ -111,12 +111,22 @@ class my_lgb:
         lgbBO.maximize(init_points=5, n_iter=10)
         end_time = time.time()
         print("Final result:{}, spend {}s".format(lgbBO.max, start_time-end_time))
-        best_params = lgbBO.res['max']
+        best_params = lgbBO.max['params']
         best_params['objective'] = general_params['objective']
         best_params['boosting'] = general_params['boosting']
         best_params['metric'] = general_params['metric']
-        best_params['objective'] = general_params['objective']
-        best_params['bagging_freq'] = general_params['learning_rate']
+        best_params['bagging_freq'] = general_params['bagging_freq']
+        best_params['learning_rate'] = general_params['learning_rate']
+        best_params['max_depth'] = general_params['max_depth']
+        best_params['verbosity'] = general_params['verbosity']
+        best_params['feature_fraction'] = 0.5
+        best_params['bagging_fraction'] = 0.5
+        best_params['num_leaves'] = int(best_params['num_leaves'])
+        """
+        best_params['lambda_l1'] = int(best_params['lambda_l1'])
+        best_params['lambda_l2'] = int(best_params['lambda_l2'])
+        """
+
 
         return best_params
 

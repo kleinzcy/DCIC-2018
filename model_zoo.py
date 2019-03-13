@@ -110,7 +110,7 @@ class my_lgb:
         start_time = time.time()
         lgbBO.maximize(init_points=5, n_iter=10)
         end_time = time.time()
-        print("Final result:{}, spend {}s".format(lgbBO.max, start_time-end_time))
+        print("Final result:{}, spend {}s".format(lgbBO.max, end_time - start_time))
         best_params = lgbBO.max['params']
         best_params['objective'] = general_params['objective']
         best_params['boosting'] = general_params['boosting']

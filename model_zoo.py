@@ -5,7 +5,6 @@
 # @File    : model_zoo.py
 # @Software: PyCharm
 
-
 import lightgbm as lgb
 from sklearn.model_selection import KFold
 import xgboost as xgb
@@ -76,13 +75,10 @@ class my_lgb:
         return pd.DataFrame({'score':_importance_feature}, index=feature_name).sort_values(by='score', ascending=False)
 
     def optimize_lgb(self, X_train, y_train, X_test, general_params):
-        # 'min_data_in_leaf': (10, 50),
-        # 'bagging_fraction': (0.3, 1.0),
-        #  'feature_fraction': (0.3, 1.0),
         params ={
-            'num_leaves': (30, 40),
-            'lambda_l1': (5, 10),
-            'lambda_l2': (0, 3)
+            'num_leaves': (29, 40),
+            'lambda_l1': (0, 0.5),
+            'lambda_l2': (0, 0.5),
         }
 
         def lgb_cv(num_leaves, lambda_l1, lambda_l2):
@@ -91,8 +87,9 @@ class my_lgb:
                 'objective': general_params['objective'],
                 'boosting': general_params['boosting'],
                 'metric': general_params['metric'],
-                'bagging_freq': general_params['bagging_freq'],
                 'learning_rate': general_params['learning_rate'],
+
+                'bagging_freq': general_params['bagging_freq'],
                 'verbosity': general_params["verbosity"],
                 'max_depth': general_params['max_depth'],
                 # tuning parameters
@@ -100,7 +97,7 @@ class my_lgb:
                 'bagging_fraction': 0.5,
                 'feature_fraction': 0.5,
                 'lambda_l1': lambda_l1,
-                'lambda_l2': lambda_l2
+                'lambda_l2': lambda_l2,
             }
 
             return self.inference_folds(X_train, y_train, X_test, param)
@@ -108,7 +105,7 @@ class my_lgb:
         lgbBO = BayesianOptimization(lgb_cv, params)
 
         start_time = time.time()
-        lgbBO.maximize(init_points=5, n_iter=10)
+        lgbBO.maximize(init_points=5, n_iter=15)
         end_time = time.time()
         print("Final result:{}, spend {}s".format(lgbBO.max, end_time - start_time))
         best_params = lgbBO.max['params']
@@ -116,17 +113,13 @@ class my_lgb:
         best_params['boosting'] = general_params['boosting']
         best_params['metric'] = general_params['metric']
         best_params['bagging_freq'] = general_params['bagging_freq']
-        best_params['learning_rate'] = general_params['learning_rate']
         best_params['max_depth'] = general_params['max_depth']
         best_params['verbosity'] = general_params['verbosity']
+        best_params['learning_rate'] = general_params['learning_rate']
+
         best_params['feature_fraction'] = 0.5
         best_params['bagging_fraction'] = 0.5
         best_params['num_leaves'] = int(best_params['num_leaves'])
-        """
-        best_params['lambda_l1'] = int(best_params['lambda_l1'])
-        best_params['lambda_l2'] = int(best_params['lambda_l2'])
-        """
-
 
         return best_params
 

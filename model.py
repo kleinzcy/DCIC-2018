@@ -9,6 +9,7 @@ import time
 from model_zoo import my_lgb
 import pandas as pd
 import numpy as np
+import pickle as pkl
 
 
 def score(pre, truth):
@@ -33,18 +34,35 @@ def percent(df, feature):
         df = df.merge(tmp, 'left', on=f)
     return df
 
+def cut_age(x):
+    if x < 18:
+        return 0
+    elif x < 30:
+        return 1
+    elif x < 40:
+        return 2
+    elif x < 50:
+        return 3
+    elif x < 60:
+        return 4
+    else:
+        return 5
 # feature
 def generate_feature(df):
     df['用户前五个月平均消费值（元）'] = (df['用户近6个月平均消费值（元）'] * 6 - df['用户账单当月总费用（元）']) / 5
     df['当月消费值较前五个月平均消费值'] = df['用户账单当月总费用（元）'] - df['用户前五个月平均消费值（元）']
+
+    # df.loc[df['用户年龄'] == 0, '用户年龄'] = df['用户年龄'].mode()
+    df['用户年龄分段'] = df['用户年龄'].apply(cut_age)
+
+    long_tail = ['当月视频播放类应用使用次数', '当月金融理财类应用使用总次数','当月网购类应用使用次数','用户当月账户余额（元）']
+    for feature in long_tail:
+        threshold = int(df[feature].std()*3 + df[feature].mean())
+        df[feature] = df[feature].apply(lambda x: x if x < threshold else threshold)
+
     app_col = ['当月视频播放类应用使用次数', '当月金融理财类应用使用总次数', '当月网购类应用使用次数']
-    df['是否使用网购类应用'] = np.where(df['当月网购类应用使用次数'] > 0, 1, 0)
     df['当月网购类应用使用次数' + '百分比'] = (df['当月网购类应用使用次数']) / (df[app_col].sum(axis=1) + 1e-8)
-    df.loc[df['用户年龄'] == 0, '用户年龄'] = df['用户年龄'].mode()
-    df['当月视频播放类应用使用次数'] = np.where(df['当月视频播放类应用使用次数'] > 30000, 30000, df['当月视频播放类应用使用次数'])
-    df['当月网购类应用使用次数'] = np.where(df['当月网购类应用使用次数'] > 10000, 10000, df['当月网购类应用使用次数'])
-    df['当月金融理财类应用使用总次数'] = np.where(df['当月金融理财类应用使用总次数'] > 10000, 10000, df['当月金融理财类应用使用总次数'])
-    df['用户当月账户余额（元）'] = np.where(df['用户当月账户余额（元）'] > 2000, 2000, df['用户当月账户余额（元）'])
+    # df['用户最近一次缴费距今时长（月）'] = df['缴费用户最近一次缴费金额（元）'].apply(lambda x: 1 if x>0 else 0)
 
     return df
 
@@ -90,7 +108,8 @@ def processing():
     train = data.loc[:49999, :]
     test = data.loc[50000:, :]
 
-    drop_columns = ['用户编码']
+    drop_columns = ['用户编码','是否大学生客户','用户实名制是否通过核实',
+                '当月是否逛过福州仓山万达', '当月是否到过福州山姆会员店']
     X_train = train.drop(columns=drop_columns).values
     y_train = target.values
     X_test = test.drop(columns=drop_columns).values
@@ -105,67 +124,18 @@ def model_final():
         clf = my_lgb(folds=5, seed=seed)
         clf.inference_folds(X_train, y_train, X_test, param)
         return clf.oof, clf.results
-    """
-    param1 = {'num_leaves': 40,
-             'objective':'regression_l2',
-             'max_depth': 6,
-             'learning_rate': 0.005,
-             "boosting": "gbdt",
-             "feature_fraction": 0.5,
-             "bagging_freq": 1,
-             "bagging_fraction": 0.5,
-             "metric": 'mae',
-             "lambda_l1": 5,
-             "lambda_l2": 0,
-             "verbosity": -1}
-    param2 = {'num_leaves': 35,
-             'objective': 'regression_l2',
-             'max_depth': 6,
-             'learning_rate': 0.005,
-             "boosting": "gbdt",
-             "feature_fraction": 0.5,
-             "bagging_freq": 1,
-             "bagging_fraction": 0.5,
-             "metric": 'mae',
-             "lambda_l1": 10,
-             "lambda_l2": 1,
-             "verbosity": -1}
-    param3 = {'num_leaves': 35,
-             'objective': 'regression_l1',
-             'max_depth': 6,
-             'learning_rate': 0.005,
-             "boosting": "gbdt",
-             "feature_fraction": 0.5,
-             "bagging_freq": 1,
-             "bagging_fraction": 0.5,
-             "metric": 'mae',
-             "lambda_l1": 5,
-             "lambda_l2": 1,
-             "verbosity": -1}
-    param4 = {'num_leaves': 37,
-             'objective': 'regression_l1',
-             'max_depth': 6,
-             'learning_rate': 0.005,
-             "boosting": "gbdt",
-             "feature_fraction": 0.5,
-             "bagging_freq": 1,
-             "bagging_fraction": 0.5,
-             "metric": 'mae',
-             "lambda_l1": 5,
-             "lambda_l2": 0,
-             "verbosity": -1}
-    """
+
     param1 = {'num_leaves': 40,
              'objective': 'regression_l2',
-             'max_depth': 6,
+             'max_depth': -1,
              'learning_rate': 0.005,
              "boosting": "gbdt",
              "feature_fraction": 0.5,
              "bagging_freq": 1,
              "bagging_fraction": 0.5,
              "metric": 'mae',
-             "lambda_l1": 5,
-             "lambda_l2": 0,
+             "lambda_l1": 0.327,
+             "lambda_l2": 0.090,
              "verbosity": -1}
     param2 = {'num_leaves': 40,
              'objective': 'regression_l2',
@@ -176,21 +146,22 @@ def model_final():
              "bagging_freq": 1,
              "bagging_fraction": 0.5,
              "metric": 'mae',
-             "lambda_l1": 5,
-             "lambda_l2": 1,
+             "lambda_l1": 0.037,
+             "lambda_l2": 0.459,
              "verbosity": -1}
     param3 = {'num_leaves': 40,
              'objective': 'regression_l1',
-             'max_depth': 6,
+             'max_depth': -1,
              'learning_rate': 0.005,
              "boosting": "gbdt",
              "feature_fraction": 0.5,
              "bagging_freq": 1,
              "bagging_fraction": 0.5,
              "metric": 'mae',
-             "lambda_l1": 5,
-             "lambda_l2": 1,
-             "verbosity": -1}
+             "lambda_l1": 0.327,
+             "lambda_l2": 0.090,
+             "verbosity": -1,
+             'min_data_in_leaf':21}
     param4 = {'num_leaves': 40,
              'objective': 'regression_l1',
              'max_depth': 6,
@@ -200,8 +171,8 @@ def model_final():
              "bagging_freq": 1,
              "bagging_fraction": 0.5,
              "metric": 'mae',
-             "lambda_l1": 5,
-             "lambda_l2": 0,
+             "lambda_l1": 0.037,
+             "lambda_l2": 0.459,
              "verbosity": -1}
 
     param = [param1, param2, param3, param4]
@@ -214,11 +185,81 @@ def model_final():
         _oof, _results = _model_main(_param, seed=_seed)
         oof.append(_oof)
         results.append(_results)
-    valid = oof[0]*0.25 + oof[1]*0.25 + oof[2]*0.25 + oof[3]*0.25
+    valid = oof[0]*0.251 + oof[1]*0.25 + oof[0]*0.25 + oof[1]*0.25
     print("score :{}, spend:{}".format(score(valid, y_train), time.time() - start))
-    final_result = results[0]*0.25 + results[1]*0.25 + results[2]*0.25 + results[3]*0.25
-    submit(model_name='my_model', predictions=final_result)
+    final_result = results[0]*0.251 + results[1]*0.25 + oof[0]*0.25 + oof[1]*0.25
+    submit(model_name='model_final', predictions=final_result)
+
+
+def model_fine_tune():
+    X_train, y_train, X_test = processing()
+
+    def cache_save():
+        with open('output/cache/params.pkl', 'wb') as f:
+            pkl.dump(best_params, f)
+        with open('output/cache/valid.pkl', 'wb') as f:
+            pkl.dump(valid, f)
+        with open('output/cache/res.pkl', 'wb') as f:
+            pkl.dump(res, f)
+    param1 = {'num_leaves': 35,
+              'objective': 'regression_l2',
+              'max_depth': 6,
+              'learning_rate': 0.005,
+              "boosting": "gbdt",
+              "feature_fraction": 0.5,
+              "bagging_freq": 1,
+              "bagging_fraction": 0.5,
+              "metric": 'mae',
+              "lambda_l1": 5,
+              "lambda_l2": 1,
+              "verbosity": -1}
+    param2 = {'num_leaves': 35,
+              'objective': 'regression_l1',
+              'max_depth': 6,
+              'learning_rate': 0.005,
+              "boosting": "gbdt",
+              "feature_fraction": 0.5,
+              "bagging_freq": 1,
+              "bagging_fraction": 0.5,
+              "metric": 'mae',
+              "lambda_l1": 5,
+              "lambda_l2": 1,
+              "verbosity": -1}
+
+    valid = []
+    res = []
+    best_params = {}
+    for seed in [2018, 2019]:
+        print('fire!!!!!')
+        print('*' * 50)
+        start = time.time()
+        clf = my_lgb(folds=5, seed=seed)
+        _best_params = clf.optimize_lgb(X_train, y_train, X_test, param1)
+        clf.inference_folds(X_train, y_train, X_test, _best_params)
+
+        best_params['{}-mse'.format(seed)] = _best_params
+        valid.append(clf.oof)
+        res.append(clf.results)
+        cache_save()
+        del clf
+        print('seed:{},training spend {}s'.format(seed, time.time() - start))
+        print('*' * 25)
+        start = time.time()
+        clf = my_lgb(folds=5, seed=seed)
+        _best_params = clf.optimize_lgb(X_train, y_train, X_test, param2)
+        clf.inference_folds(X_train, y_train, X_test, _best_params)
+
+        best_params['{}-mse'.format(seed)] = _best_params
+        valid.append(clf.oof)
+        res.append(clf.results)
+        cache_save()
+        del clf
+        print('seed:{},training spend {}s'.format(seed, time.time() - start))
+        print('*' * 50)
+
+def merge():
+    pass
 
 
 if __name__=='__main__':
-    model_final()
+    model_fine_tune()

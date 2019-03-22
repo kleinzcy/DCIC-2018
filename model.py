@@ -109,7 +109,7 @@ def processing():
     test = data.loc[50000:, :]
 
     drop_columns = ['用户编码','是否大学生客户','用户实名制是否通过核实',
-                '当月是否逛过福州仓山万达', '当月是否到过福州山姆会员店']
+                '当月是否逛过福州仓山万达', '当月是否到过福州山姆会员店','用户最近一次缴费距今时长（月）']
     X_train = train.drop(columns=drop_columns).values
     y_train = target.values
     X_test = test.drop(columns=drop_columns).values
@@ -127,15 +127,15 @@ def model_final():
 
     param1 = {'num_leaves': 40,
              'objective': 'regression_l2',
-             'max_depth': -1,
+             'max_depth': 6,
              'learning_rate': 0.005,
              "boosting": "gbdt",
              "feature_fraction": 0.5,
              "bagging_freq": 1,
              "bagging_fraction": 0.5,
              "metric": 'mae',
-             "lambda_l1": 0.327,
-             "lambda_l2": 0.090,
+             "lambda_l1": 0.076,
+             "lambda_l2": 0.18,
              "verbosity": -1}
     param2 = {'num_leaves': 40,
              'objective': 'regression_l2',
@@ -146,20 +146,20 @@ def model_final():
              "bagging_freq": 1,
              "bagging_fraction": 0.5,
              "metric": 'mae',
-             "lambda_l1": 0.037,
-             "lambda_l2": 0.459,
+             "lambda_l1": 0.05,
+             "lambda_l2": 0.04,
              "verbosity": -1}
     param3 = {'num_leaves': 40,
              'objective': 'regression_l1',
-             'max_depth': -1,
+             'max_depth': 6,
              'learning_rate': 0.005,
              "boosting": "gbdt",
              "feature_fraction": 0.5,
              "bagging_freq": 1,
              "bagging_fraction": 0.5,
              "metric": 'mae',
-             "lambda_l1": 0.327,
-             "lambda_l2": 0.090,
+             "lambda_l1": 0.145,
+             "lambda_l2": 0.042,
              "verbosity": -1,
              'min_data_in_leaf':21}
     param4 = {'num_leaves': 40,
@@ -171,8 +171,8 @@ def model_final():
              "bagging_freq": 1,
              "bagging_fraction": 0.5,
              "metric": 'mae',
-             "lambda_l1": 0.037,
-             "lambda_l2": 0.459,
+             "lambda_l1": 0.1,
+             "lambda_l2": 0.095,
              "verbosity": -1}
 
     param = [param1, param2, param3, param4]
@@ -181,7 +181,7 @@ def model_final():
     results = []
     for _param, _seed in zip(param, seed):
         print('*'*50)
-        print("seed: {}, type: {}".format(_seed, _param['metric']))
+        print("seed: {}, type: {}".format(_seed, _param['objective']))
         _oof, _results = _model_main(_param, seed=_seed)
         oof.append(_oof)
         results.append(_results)
@@ -213,7 +213,7 @@ def model_fine_tune():
               "lambda_l1": 5,
               "lambda_l2": 1,
               "verbosity": -1}
-    param2 = {'num_leaves': 35,
+    param2 = {'num_leaves': 40,
               'objective': 'regression_l1',
               'max_depth': 6,
               'learning_rate': 0.005,
@@ -222,8 +222,8 @@ def model_fine_tune():
               "bagging_freq": 1,
               "bagging_fraction": 0.5,
               "metric": 'mae',
-              "lambda_l1": 5,
-              "lambda_l2": 1,
+              "lambda_l1": 0.05,
+              "lambda_l2": 0.04,
               "verbosity": -1}
 
     valid = []
@@ -262,4 +262,5 @@ def merge():
 
 
 if __name__=='__main__':
-    model_fine_tune()
+    # model_fine_tune()
+    model_final()

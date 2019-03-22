@@ -52,8 +52,8 @@ def generate_feature(df):
     df['用户前五个月平均消费值（元）'] = (df['用户近6个月平均消费值（元）'] * 6 - df['用户账单当月总费用（元）']) / 5
     df['当月消费值较前五个月平均消费值'] = df['用户账单当月总费用（元）'] - df['用户前五个月平均消费值（元）']
 
-    # df.loc[df['用户年龄'] == 0, '用户年龄'] = df['用户年龄'].mode()
-    df['用户年龄分段'] = df['用户年龄'].apply(cut_age)
+    df.loc[df['用户年龄'] == 0, '用户年龄'] = df['用户年龄'].mode()
+    # df['用户年龄分段'] = df['用户年龄'].apply(cut_age)
 
     long_tail = ['当月视频播放类应用使用次数', '当月金融理财类应用使用总次数','当月网购类应用使用次数','用户当月账户余额（元）']
     for feature in long_tail:
@@ -109,7 +109,7 @@ def processing():
     test = data.loc[50000:, :]
 
     drop_columns = ['用户编码','是否大学生客户','用户实名制是否通过核实',
-                '当月是否逛过福州仓山万达', '当月是否到过福州山姆会员店','用户最近一次缴费距今时长（月）']
+                '当月是否逛过福州仓山万达', '当月是否到过福州山姆会员店']
     X_train = train.drop(columns=drop_columns).values
     y_train = target.values
     X_test = test.drop(columns=drop_columns).values
@@ -134,8 +134,8 @@ def model_final():
              "bagging_freq": 1,
              "bagging_fraction": 0.5,
              "metric": 'mae',
-             "lambda_l1": 0.076,
-             "lambda_l2": 0.18,
+             "lambda_l1": 0.13,
+             "lambda_l2": 0.05,
              "verbosity": -1}
     param2 = {'num_leaves': 40,
              'objective': 'regression_l2',
@@ -146,7 +146,7 @@ def model_final():
              "bagging_freq": 1,
              "bagging_fraction": 0.5,
              "metric": 'mae',
-             "lambda_l1": 0.05,
+             "lambda_l1": 0.13,
              "lambda_l2": 0.04,
              "verbosity": -1}
     param3 = {'num_leaves': 40,
@@ -160,8 +160,7 @@ def model_final():
              "metric": 'mae',
              "lambda_l1": 0.145,
              "lambda_l2": 0.042,
-             "verbosity": -1,
-             'min_data_in_leaf':21}
+             "verbosity": -1}
     param4 = {'num_leaves': 40,
              'objective': 'regression_l1',
              'max_depth': 6,
@@ -185,10 +184,20 @@ def model_final():
         _oof, _results = _model_main(_param, seed=_seed)
         oof.append(_oof)
         results.append(_results)
-    valid = oof[0]*0.251 + oof[1]*0.25 + oof[0]*0.25 + oof[1]*0.25
+    valid = oof[0]*0.25 + oof[1]*0.25 + oof[0]*0.251 + oof[1]*0.25
     print("score :{}, spend:{}".format(score(valid, y_train), time.time() - start))
-    final_result = results[0]*0.251 + results[1]*0.25 + oof[0]*0.25 + oof[1]*0.25
-    submit(model_name='model_final', predictions=final_result)
+    final_result = results[0]*0.25 + results[1]*0.25 + oof[0]*0.251 + oof[1]*0.25
+    submit(model_name='model_final_1', predictions=final_result)
+
+    valid = oof[0]*0.50 + oof[1]*0.502
+    print("score :{}, spend:{}".format(score(valid, y_train), time.time() - start))
+    final_result = results[0]*0.50 + results[1]*0.502
+    submit(model_name='model_final_2', predictions=final_result)
+
+    valid = oof[0]*0.502 + oof[1]*0.50
+    print("score :{}, spend:{}".format(score(valid, y_train), time.time() - start))
+    final_result = results[0]*0.502 + results[1]*0.50
+    submit(model_name='model_final_3', predictions=final_result)
 
 
 def model_fine_tune():
